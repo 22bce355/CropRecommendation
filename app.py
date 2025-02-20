@@ -19,7 +19,7 @@ def webhook():
     req = request.get_json()
 
     # Extract parameters from Dialogflow
-    soil_type = req.get('queryResult', {}).get('parameters', {}).get('soiltype', '').lower()
+    soil_type = req.get('queryResult', {}).get('parameters', {}).get('soil_type', '').lower()
     season = req.get('queryResult', {}).get('parameters', {}).get('season', '').lower()
 
     if soil_type and season:
