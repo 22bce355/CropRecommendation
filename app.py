@@ -17,10 +17,16 @@ def home():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     req = request.get_json()
+    print("Received Request:", req)  # Debugging
 
     # Extract parameters from Dialogflow
-    soil_type = req.get('queryResult', {}).get('parameters', {}).get('soil_type', '').lower()
+    soil_type_raw = req.get('queryResult', {}).get('parameters', {}).get('soil_type', '').lower()
     season = req.get('queryResult', {}).get('parameters', {}).get('season', '').lower()
+
+    # Normalize soil type by removing "soil" from extracted text
+    soil_type = soil_type_raw.replace(" soil", "")
+
+    print(f"Extracted Soil Type: {soil_type}, Season: {season}")  # Debugging
 
     if soil_type and season:
         crops = crop_recommendations.get(soil_type, [])
@@ -32,6 +38,7 @@ def webhook():
     else:
         fulfillment_text = "Please provide both soil type and season for recommendations."
 
+    print(f"Response Sent: {fulfillment_text}")  # Debugging
     return jsonify({'fulfillmentText': fulfillment_text})
 
 if __name__ == '__main__':
