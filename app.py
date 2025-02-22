@@ -1,14 +1,13 @@
 from flask import Flask, request, jsonify
+import openai
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
-
-# Crop recommendations based on soil type
-crop_recommendations = {
-    "sandy": ["Watermelon", "Peanuts", "Millets"],
-    "clay": ["Rice", "Jute", "Tomato"],
-    "loamy": ["Wheat", "Sugarcane", "Vegetables"],
-    "black": ["Cotton", "Soybean", "Sunflower"]
-}
 
 @app.route('/')
 def home():
@@ -19,24 +18,22 @@ def webhook():
     req = request.get_json()
     print("Received Request:", req)  # Debugging
 
-    # Extract parameters from Dialogflow
-    soil_type_raw = req.get('queryResult', {}).get('parameters', {}).get('soil_type', '').lower()
-    season = req.get('queryResult', {}).get('parameters', {}).get('season', '').lower()
+    # Extract user query from Dialogflow request
+    user_query = req.get('queryResult', {}).get('queryText', '')
 
-    # Normalize soil type by removing "soil" from extracted text
-    soil_type = soil_type_raw.replace(" soil", "")
+    if user_query:
+        # Send the entire user query to OpenAI GPT
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an AI assistant specializing in crop recommendations."},
+                {"role": "user", "content": user_query}
+            ]
+        )
 
-    print(f"Extracted Soil Type: {soil_type}, Season: {season}")  # Debugging
-
-    if soil_type and season:
-        crops = crop_recommendations.get(soil_type, [])
-        
-        if crops:
-            fulfillment_text = f"For {soil_type} soil in {season}, you can grow: {', '.join(crops)}."
-        else:
-            fulfillment_text = f"Sorry, I don’t have recommendations for {soil_type} soil."
+        fulfillment_text = response["choices"][0]["message"]["content"].strip()
     else:
-        fulfillment_text = "Please provide both soil type and season for recommendations."
+        fulfillment_text = "I'm sorry, but I couldn't understand your query."
 
     print(f"Response Sent: {fulfillment_text}")  # Debugging
     return jsonify({'fulfillmentText': fulfillment_text})
