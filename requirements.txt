@@ -1,4 +1,4 @@
-Flask
-gunicorn
 openai
-
+flask
+flask-cors
+python-dotenv
