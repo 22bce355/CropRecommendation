@@ -1,42 +1,39 @@
 from flask import Flask, request, jsonify
 import openai
+from flask_cors import CORS
 import os
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+default_prompt = "You are a helpful AI chatbot providing agricultural assistance."
 
 app = Flask(__name__)
+CORS(app)
 
-@app.route('/')
-def home():
-    return "Crop Recommendation Webhook is running!"
+# Initialize OpenAI client
+openai.api_key = os.getenv("OPENAI_API_KEY")  # Ensure you set this in your environment
 
-@app.route('/webhook', methods=['POST'])
+@app.route("/webhook", methods=["POST"])
 def webhook():
-    req = request.get_json()
-    print("Received Request:", req)  # Debugging
+    try:
+        data = request.get_json()
+        user_message = data.get("queryText", "")
 
-    # Extract user query from Dialogflow request
-    user_query = req.get('queryResult', {}).get('queryText', '')
+        if not user_message:
+            return jsonify({"error": "Empty query text"}), 400
 
-    if user_query:
-        # Send the entire user query to OpenAI GPT
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI()
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are an AI assistant specializing in crop recommendations."},
-                {"role": "user", "content": user_query}
+                {"role": "system", "content": default_prompt},
+                {"role": "user", "content": user_message}
             ]
         )
 
-        fulfillment_text = response["choices"][0]["message"]["content"].strip()
-    else:
-        fulfillment_text = "I'm sorry, but I couldn't understand your query."
+        reply = response.choices[0].message.content.strip()
+        return jsonify({"fulfillmentText": reply})
 
-    print(f"Response Sent: {fulfillment_text}")  # Debugging
-    return jsonify({'fulfillmentText': fulfillment_text})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
